@@ -67,6 +67,8 @@
     #define CTP_SCL 32
     #define CTP_RST 25
     #define CTP_INT 21
+    // TEMP: print raw + mapped touch coords over serial (115200) for calibration
+    #define GT911_DEBUG
   #endif
   //// END BOARD TARGETS
 

@@ -126,6 +126,11 @@ uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
               *y = raw_y;
               break;
           }
+          #ifdef GT911_DEBUG
+            Serial.printf("[Touch] rot=%u raw=(%u,%u) mapped=(%u,%u) SW=%d SH=%d TW=%d TH=%d\n",
+                          rot, raw_x, raw_y, *x, *y,
+                          (int)SCREEN_WIDTH, (int)SCREEN_HEIGHT, (int)TFT_WIDTH, (int)TFT_HEIGHT);
+          #endif
           return 1;
         }
       #elif defined(HAS_CAP_TOUCH)
