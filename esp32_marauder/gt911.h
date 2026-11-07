@@ -116,7 +116,8 @@ static int8_t gt911_read_raw(uint16_t *x, uint16_t *y) {
   *y = (uint16_t)(p[3] | (p[4] << 8));
 
   #ifdef GT911_DEBUG
-    Serial.printf("[Touch] GT911 raw x=%u y=%u pts=%u\n", *x, *y, points);
+    Serial.printf("[Touch] GT911 st=0x%02X pts=%u b=[%02X %02X %02X %02X %02X] x=%u y=%u\n",
+                  status, points, p[0], p[1], p[2], p[3], p[4], *x, *y);
   #endif
   return 1;
 }
