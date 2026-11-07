@@ -35,6 +35,7 @@
   //#define MARAUDER_CYD_2USB // Another 2432S028 but it has tWo UsBs OoOoOoO
   //#define MARAUDER_CYD_GUITION // ESP32-2432S024 GUITION
   //#define MARAUDER_CYD_3_5_INCH
+  //#define MARAUDER_CYD_3_5_INCH_CAP // ESP32-3248S035C (3.5" capacitive, GT911)
   //#define MARAUDER_C5
   //#define MARAUDER_T_DONGLE_C5
   //#define MARAUDER_CARDPUTER
@@ -52,6 +53,20 @@
   #ifdef MARAUDER_WS_C5_35
     #define MARAUDER_PANCAKE
     #define MARAUDER_WS_C5_35_OVERRIDE
+  #endif
+
+  // ESP32-3248S035C is the capacitive (GT911) sibling of the resistive 3.5" CYD.
+  // The display, SPI pins and geometry are identical, so inherit the verified
+  // MARAUDER_CYD_3_5_INCH contract and swap only the touch controller: disable
+  // the resistive XPT2046 path and bring in the GT911 I2C driver instead.
+  #ifdef MARAUDER_CYD_3_5_INCH_CAP
+    #define MARAUDER_CYD_3_5_INCH
+    #define HAS_GT911_TOUCH
+    // GT911 I2C wiring on the 3248S035C touch header
+    #define CTP_SDA 33
+    #define CTP_SCL 32
+    #define CTP_RST 25
+    #define CTP_INT 21
   #endif
   //// END BOARD TARGETS
 
@@ -111,6 +126,8 @@
     #define HARDWARE_NAME "CYD 2432S028"
   #elif defined(MARAUDER_CYD_2USB)
     #define HARDWARE_NAME "CYD 2432S028 2USB"
+  #elif defined(MARAUDER_CYD_3_5_INCH_CAP)
+    #define HARDWARE_NAME "CYD 3.5inch Cap"
   #elif defined(MARAUDER_CYD_3_5_INCH)
     #define HARDWARE_NAME "CYD 3.5inch"
   #elif defined(MARAUDER_CYD_GUITION)

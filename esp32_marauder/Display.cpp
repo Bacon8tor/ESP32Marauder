@@ -89,7 +89,46 @@ int8_t Display::menuButton(uint16_t *x, uint16_t *y, bool pressed, bool check_ho
 uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
   #ifdef HAS_ILI9341
     if (!this->headless_mode) {
-      #ifdef HAS_CAP_TOUCH
+      #if defined(HAS_GT911_TOUCH)
+        // GT911 capacitive touch (ESP32-3248S035C): rotation-aware mapping from
+        // the panel-native portrait coordinate space to the active rotation.
+        {
+          uint16_t raw_x, raw_y;
+          const int8_t touch_state = gt911_read_raw(&raw_x, &raw_y);
+          if (touch_state != 1) return 0;
+          this->last_touch_ms = millis();
+
+          const uint16_t GT911_PANEL_W = TFT_WIDTH;   // 320, portrait
+          const uint16_t GT911_PANEL_H = TFT_HEIGHT;  // 480, portrait
+          if (raw_x >= GT911_PANEL_W) raw_x = GT911_PANEL_W - 1;
+          if (raw_y >= GT911_PANEL_H) raw_y = GT911_PANEL_H - 1;
+
+          uint8_t rot = this->tft.getRotation();
+          switch (rot) {
+            case 0: // Portrait (native)
+              *x = raw_x;
+              *y = raw_y;
+              break;
+            case 1: // Landscape 90 CW
+              *x = raw_y;
+              *y = (GT911_PANEL_W - 1) - raw_x;
+              break;
+            case 2: // Portrait 180
+              *x = (GT911_PANEL_W - 1) - raw_x;
+              *y = (GT911_PANEL_H - 1) - raw_y;
+              break;
+            case 3: // Landscape 270 CW
+              *x = (GT911_PANEL_H - 1) - raw_y;
+              *y = raw_x;
+              break;
+            default:
+              *x = raw_x;
+              *y = raw_y;
+              break;
+          }
+          return 1;
+        }
+      #elif defined(HAS_CAP_TOUCH)
         // FT6336 capacitive touch: rotation-aware + edge exclusion
         {
           uint16_t raw_x, raw_y;
@@ -240,7 +279,7 @@ void Display::init() {
 }
 
 void Display::setCalData(bool landscape) {
-  #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH)
+  #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH) && !defined(HAS_GT911_TOUCH)
     if (!landscape) {
       #ifdef TFT_SHIELD
         uint16_t calData[5] = { 275, 3494, 361, 3528, 4 }; // tft.setRotation(0); // Portrait with TFT Shield
@@ -293,7 +332,11 @@ void Display::RunSetup() {
   #ifdef HAS_CAP_TOUCH
     ft6336_init();
   #endif
-  
+
+  #ifdef HAS_GT911_TOUCH
+    gt911_init();
+  #endif
+
   tft.init();
 
   tft.setRotation(SCREEN_ORIENTATION);
@@ -302,7 +345,7 @@ void Display::RunSetup() {
 
   #ifdef HAS_ILI9341
 
-    #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH)
+    #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH) && !defined(HAS_GT911_TOUCH)
       this->setCalData();
     #endif
 

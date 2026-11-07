@@ -42,6 +42,7 @@ jobs:
           - { name: "Marauder CYD 2432S024 GUITION", flag: "MARAUDER_CYD_GUITION",     fbqn: "esp32:esp32:d32:PartitionScheme=min_spiffs",                                                    file_name: "cyd_2432S024_guition",    tft: true,  tft_file: "User_Setup_cyd_guition.h",           build_dir: "d32",                        addr: "0x1000",   idf_ver: "2.0.11",   nimble_ver: "1.3.8",    esp_async: "bigbrodude6119/ESPAsyncWebServer",    esp_async_ver: "master" }
           - { name: "Marauder CYD 2432S028 2 USB",   flag: "MARAUDER_CYD_2USB",        fbqn: "esp32:esp32:d32:PartitionScheme=min_spiffs",                                                    file_name: "cyd_2432S028_2usb",       tft: true,  tft_file: "User_Setup_cyd_2usb.h",              build_dir: "d32",                        addr: "0x1000",   idf_ver: "3.3.4",    nimble_ver: "2.3.8",   esp_async: "bigbrodude6119/ESPAsyncWebServer",    esp_async_ver: "master" }
           - { name: "Marauder CYD 3.5inch",          flag: "MARAUDER_CYD_3_5_INCH",    fbqn: "esp32:esp32:d32:PartitionScheme=min_spiffs",                                                    file_name: "cyd_3_5_inch",            tft: true,  tft_file: "User_Setup_cyd_3_5_inch.h",          build_dir: "d32",                        addr: "0x1000",   idf_ver: "2.0.11",   nimble_ver: "1.3.8",    esp_async: "bigbrodude6119/ESPAsyncWebServer",    esp_async_ver: "master" }
+          - { name: "Marauder CYD 3.5inch Capacitive", flag: "MARAUDER_CYD_3_5_INCH_CAP", fbqn: "esp32:esp32:d32:PartitionScheme=min_spiffs",                                                  file_name: "cyd_3_5_inch_cap",        tft: true,  tft_file: "User_Setup_cyd_3_5_inch.h",          build_dir: "d32",                        addr: "0x1000",   idf_ver: "2.0.11",   nimble_ver: "1.3.8",    esp_async: "bigbrodude6119/ESPAsyncWebServer",    esp_async_ver: "master" }
           - { name: "M5Cardputer",                   flag: "MARAUDER_CARDPUTER",       fbqn: "esp32:esp32:esp32s3:PartitionScheme=min_spiffs,FlashSize=8M,PSRAM=disabled",                    file_name: "m5cardputer",             tft: true,  tft_file: "User_Setup_marauder_m5cardputer.h",  build_dir: "esp32s3",                    addr: "0x1000",   idf_ver: "3.3.4",    nimble_ver: "2.3.8",    esp_async: "bigbrodude6119/ESPAsyncWebServer",    esp_async_ver: "master" }
           - { name: "M5Cardputer ADV",               flag: "MARAUDER_CARDPUTER_ADV",   fbqn: "esp32:esp32:esp32s3:PartitionScheme=min_spiffs,FlashSize=8M,PSRAM=disabled",                    file_name: "m5cardputer_adv",         tft: true,  tft_file: "User_Setup_marauder_m5cardputer_adv.h",  build_dir: "esp32s3",                addr: "0x1000",   idf_ver: "3.3.4",    nimble_ver: "2.3.8",    esp_async: "bigbrodude6119/ESPAsyncWebServer",    esp_async_ver: "master" }
           - { name: "ESP32-C5-DevKitC-1",            flag: "MARAUDER_C5",              fbqn: "esp32:esp32:esp32c5:FlashSize=8M,PartitionScheme=default_8MB,PSRAM=enabled",                    file_name: "esp32c5devkitc1",         tft: false, tft_file: "",                                   build_dir: "esp32c5",                    addr: "0x2000",   idf_ver: "3.3.4",    nimble_ver: "2.3.8",   esp_async: "bigbrodude6119/ESPAsyncWebServer",    esp_async_ver: "master" }
@@ -279,7 +280,35 @@ jobs:
       #- name: Rename Marauder ${{ matrix.board.name }} bin
       #  run: |
       #    mv ./esp32_marauder/build/esp32.esp32.${{ matrix.board.build_dir }}/esp32_marauder.ino.bin ./esp32_marauder/build/esp32.esp32.${{ matrix.board.build_dir }}/esp32_marauder.${{ matrix.board.file_name }}.bin
-      
+
+      - name: Merge single flashable bin (CYD 3.5 Capacitive)
+        if: matrix.board.flag == 'MARAUDER_CYD_3_5_INCH_CAP'
+        run: |
+          pip install "esptool==4.8.1"
+          VERSION=$(grep '#define MARAUDER_VERSION' ./esp32_marauder/configs.h | sed -E 's/.*"v([^"]+)"/v\1/' | tr '.' '_')
+          DATE=$(date +%Y%m%d)
+          BUILD_DIR=./esp32_marauder/build/esp32.esp32.${{ matrix.board.build_dir }}
+          BOOT_APP0=$(find /home/runner/.arduino15/packages/esp32/hardware/esp32/ -name boot_app0.bin | head -n1)
+          echo "Using boot_app0: $BOOT_APP0"
+          ls -la "$BUILD_DIR"
+          MERGED=esp32_marauder_${VERSION}_${DATE}_cyd_3_5_inch_cap_MERGED_0x0.bin
+          python -m esptool --chip esp32 merge_bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            -o "$BUILD_DIR/$MERGED" \
+            0x1000  "$BUILD_DIR/esp32_marauder.ino.bootloader.bin" \
+            0x8000  "$BUILD_DIR/esp32_marauder.ino.partitions.bin" \
+            0xe000  "$BOOT_APP0" \
+            0x10000 "$BUILD_DIR/esp32_marauder.ino.bin"
+          ls -la "$BUILD_DIR"/*.bin
+
+      - name: Upload merged flashable bin (CYD 3.5 Capacitive)
+        if: matrix.board.flag == 'MARAUDER_CYD_3_5_INCH_CAP'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyd_3_5_inch_cap_MERGED_flash_at_0x0
+          path: ./esp32_marauder/build/esp32.esp32.${{ matrix.board.build_dir }}/*_MERGED_0x0.bin
+          retention-days: 7
+
       - name: Rename and Upload ${{ matrix.board.name }} Artifact
         run: |
           VERSION=$(grep '#define MARAUDER_VERSION' ./esp32_marauder/configs.h | sed -E 's/.*"v([^"]+)"/v\1/' | tr '.' '_')
